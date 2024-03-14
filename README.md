@@ -1,7 +1,7 @@
 # Bibi-GPT-bot Helper with subjects
 GPT-bot that can help you with different school subjects
 
-[link to git](https://github.com/NikkyBricky/Voice_of_the_universe_bot.git)
+[link to git](https://github.com/NikkyBricky/Bibi-GPT-bot.git)
 # Description
 This bot can:
 1. help you with astronomy and geography
