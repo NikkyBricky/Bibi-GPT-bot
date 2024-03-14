@@ -26,11 +26,12 @@ bot = telebot.TeleBot(token=token)
 gpt = GPT()
 # ------------------------------------------------------ЛОГИ------------------------------------------------------------
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H",
     filename="log_file.txt",
     filemode="w",
+    force=True
 )
 
 
@@ -149,7 +150,10 @@ def start_bot(message):
     bot.set_my_commands(commands)
     BotCommandScope('private', chat_id=message.chat.id)
     user_id = message.from_user.id  # создание пользователя
-    check_user(user_id)
+
+    check_user(user_id)  # данная проверка есть в каждой функции, на случай, чтобы не возникла ошибка, если бд удалена.
+
+    # эта проверка также есть везде, чтобы блокировать команды во время выполнения запроса
     if check_processing_answer(user_id, message):
         return
 
