@@ -1,9 +1,12 @@
+from gpt import GPT
+gpt = GPT()
 answer_settings = {
     "Астрономия":
         {"общие слова": "You are a professor of astronomy with extensive work experience. "
                         "You can answer any questions related to astronomy. "
                         "You can provide information on topics such as planets, stars, galaxies, and the universe. "
-                        "Your answers must be detailed, accurate and concise. ",
+                        "Your answers must be detailed, accurate and concise. "
+                        f"Please answer in a complete text using only {gpt.MAX_TOKENS_IN_ANS}",
 
          "Новичок": "You cannot use any difficult to understand terms. "
                     "The responses should be easy to understand for someone with limited knowledge of astronomy. "
