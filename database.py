@@ -89,3 +89,8 @@ def delete_user(user_id):
     query = f"DELETE FROM users WHERE user_id = ?"
     process_query(query, [user_id])
     logging.info(f"Пользователь с user_id = {user_id} успешно удален из базы данных")
+
+
+def delete_process_answer():
+    query = "UPDATE users SET processing_answer = 0"
+    process_query(query, None)

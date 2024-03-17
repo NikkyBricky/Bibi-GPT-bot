@@ -10,9 +10,9 @@ from telebot.types import ReplyKeyboardMarkup, BotCommand, BotCommandScope, Inli
 from gpt import GPT
 import logging
 from database import (create_db, create_users_table, add_user_to_database, find_user_data, update_user_data,
-                      count_subjects_popularity, find_latest_issues)
+                      count_subjects_popularity, find_latest_issues, delete_process_answer)
 from config import get_settings
-
+from googletrans import Translator
 create_db()
 create_users_table()
 
@@ -138,6 +138,8 @@ def make_inline_keyboard(data, user_id: None | int):
 def start_bot(message):
     logging.info("Бот запущен")
 
+    user_id = message.from_user.id
+
     commands = [  # Установка списка команд с областью видимости и описанием
         BotCommand('start', 'перезапустить бота'),
         BotCommand('help', 'узнайте о доступных командах'),
@@ -146,10 +148,12 @@ def start_bot(message):
         BotCommand('exit', 'завершить диалог с нейросетью'),
         BotCommand('stats', 'показать статистику использования бота')
     ]
+    if user_id == admin_id:
+        admin_command = BotCommand('delete_process_resp', 'исправить ошибку работы с нейросетью')
+        commands.append(admin_command)
 
     bot.set_my_commands(commands)
     BotCommandScope('private', chat_id=message.chat.id)
-    user_id = message.from_user.id  # создание пользователя
 
     check_user(user_id)  # данная проверка есть в каждой функции, на случай, чтобы не возникла ошибка, если бд удалена.
 
@@ -204,11 +208,15 @@ def settings(message):
 
     if check_processing_answer(user_id, message):
         return
-    previous_msg = find_user_data(user_id)['settings_msg_id']
+    user_data = find_user_data(user_id)
+    previous_msg = user_data['settings_msg_id']
 
     if message.text.lower() == "вернуться в главное меню":
-        bot.send_message(c_id, 'Теперь можете начать диалог с нейросетью, нажав на кнопку "Поболтаем!"',
-                         reply_markup=main_menu_keyboard)
+        bot.send_message(c_id, 'Теперь можете начать диалог с нейросетью, нажав на кнопку "Поболтаем!"\n\n'
+                               "Ваша конфигурация на данный момент:\n\n"
+                               f"<b>Выбранный предмет:</b> {user_data['subject']}\n"
+                               f"<b>Выбранный уровень объяснения:</b> {user_data['level']}",
+                         reply_markup=main_menu_keyboard, parse_mode="html")
 
         for i in range(0, 3):  # удаляем предыдущие сообщения, связанные с параметрами во избежание ошибок
             m_id = previous_msg - i
@@ -246,7 +254,7 @@ def settings(message):
 def delete_process_resp(message):
     user_id = message.from_user.id
     if user_id == admin_id:
-        update_user_data(user_id, 'processing_answer', 0)
+        delete_process_answer()
         bot.send_message(message.chat.id, "Ошибка успешно исправлена.")
     else:
         bot.send_message(message.chat.id, "Доступ запрещен.")
@@ -305,13 +313,16 @@ def take_issue(message):
     check_user(user_id)
     if check_processing_answer(user_id, message):
         return
-
+    user_data = find_user_data(user_id)
     bot.send_message(message.chat.id, 'Можете задать Ваш вопрос.\n\n'
                                       'Важно:\n\n'
                                       "0. Нейросеть призвана предоставить вам информацию по астрономии или географии"
                                       " (в зависимости от вашего выбора) и на определенном уровне (новичок или профи),"
                                       " поэтому для получения лучших ответов следует "
-                                      "задавать ей вопросы, связанные с данной тематикой."
+                                      "задавать ей вопросы, связанные с данной тематикой.\n\n"
+                                      "Ваша конфигурация на данный момент:\n\n"
+                                      f"<b>Выбранный предмет:</b> {user_data['subject']}\n"
+                                      f"<b>Выбранный уровень объяснения:</b> {user_data['level']}"
                                       '\n\n1. Запрос должен быть текстовым,'
                                       ' иначе у Вас просто не получится его сделать.\n\n'
                                       '2. Если захотите продолжить, то'
@@ -320,7 +331,7 @@ def take_issue(message):
                                       '3. Если хотите воспользоваться командами или изменить что-то в параметрах,'
                                       ' то Вам нужно сначала '
                                       'завершить диалог с нейросетью. Иначе команда будет воспринята как запрос.',
-                     reply_markup=make_reply_keyboard(["Выход"]))
+                     reply_markup=make_reply_keyboard(["Выход"]), parse_mode="html")
 
     logging.info("сообщение с инструкцией по созданию промпта успешно отправлено")
 
@@ -354,7 +365,12 @@ def ask_gpt(message):
         return
 
     user_data = find_user_data(user_id)
-
+    if prompt.lower() == "показать весь ответ":
+        translator = Translator()
+        t_answer = translator.translate(f'{user_data["answer"]}', src='en', dest='ru').text
+        bot.send_message(message.chat.id, t_answer)
+        bot.register_next_step_handler(message, ask_gpt)
+        return
     if prompt.lower() == "продолжи!":
 
         if user_data['answer'] == "":
@@ -404,7 +420,11 @@ def ask_gpt(message):
         bot.send_message(message.chat.id, answer_gpt[1], reply_markup=make_reply_keyboard(["Выход"]))
 
     else:  # если запрос успешно пришел
-        bot.reply_to(message, answer_gpt[1], reply_markup=make_reply_keyboard(["Продолжи!", "Выход"]))
+        if prompt.lower() != "продолжи!":
+            bot.reply_to(message, answer_gpt[1], reply_markup=make_reply_keyboard(["Продолжи!", "Выход"]))
+        else:
+            bot.reply_to(message, answer_gpt[1], reply_markup=make_reply_keyboard(["Продолжи!", "Показать весь ответ",
+                                                                                   "Выход"]))
 
         logging.info("Ответ нейросети успешно доставлен")
 
@@ -465,8 +485,10 @@ def process_calls(call):
         text = "Какой параметр вы хотите изменить?"
 
     keyboard = make_inline_keyboard(data, user_id=user_id)
-
-    bot.edit_message_text(chat_id=c_id, message_id=m_id, text=text, reply_markup=keyboard)
+    try:
+        bot.edit_message_text(chat_id=c_id, message_id=m_id, text=text, reply_markup=keyboard)
+    except telebot.apihelper.ApiTelegramException:
+        pass
 
 
 bot.infinity_polling()  # запуск бота
