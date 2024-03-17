@@ -12,7 +12,7 @@ class GPT:
         self.HEADERS = {"Content-Type": "application/json"}
         self.MAX_TOKENS_IN_QUEST = 2048
         self.TEMPERATURE = 0.9
-        self.MAX_TOKENS_IN_ANS = 30
+        self.MAX_TOKENS_IN_ANS = 150
 
     def make_prompt(self, user_content, gpt_answer, system_prompt):
         translator = Translator()  # для лучшей работы использую переводчик
