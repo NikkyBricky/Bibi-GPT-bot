@@ -12,10 +12,5 @@ This bot uses model "mistralai/Mistral-7B-Instruct-v0.2"
 If you want to make your bot with the functions like here, I suggest you to:
  1. Clone this repository
  2. Create .env file with TOKEN and ADMIN_ID (your telegram_id) variables
-
-If you just want to see it work:
- 1. go to https://t.me/bibi_gpt_bot
- 2. Choose parameters 
- 3. Ask your questions
-
+ 3. Download and launch the LLM model 
 Enjoy!
